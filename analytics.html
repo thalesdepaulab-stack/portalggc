@@ -482,6 +482,10 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 .ab-ext{background:#fef3c7;color:#92400e}
 .ab-other,.ab-pend{background:#f3f4f6;color:#6b7280}
 .aus-empty{color:var(--fg2);font-size:13px;text-align:center;padding:40px}
+.aus-btn-ok,.aus-btn-no{border:none;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.aus-btn-ok{background:var(--g-bg);color:var(--g-fg)}
+.aus-btn-no{background:var(--r-bg);color:var(--r-fg)}
+.aus-btn-ok:hover,.aus-btn-no:hover{opacity:.8}
 .sidebar{width:220px;background:#1d1d1b;position:fixed;top:0;left:0;bottom:0;z-index:50;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent;transition:transform .25s}
 .main-wrap{margin-left:220px;min-height:100vh;background:var(--bg)}
 @media(max-width:768px){.sidebar{transform:translateX(-220px)}.sidebar.mob-open{transform:translateX(0)}.main-wrap{margin-left:0}.mob-ov{display:block!important}}
@@ -1337,6 +1341,9 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
           <option value="Folga">Folga</option>
           <option value="Home office">Home office</option>
           <option value="Outro">Outro</option>
+        </select>
+        <select id="aus-filter-dept" onchange="filterAusencias()" style="padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--fg);font-size:12px;font-family:inherit;outline:none">
+          <option value="">Todas as áreas</option>
         </select>
         <span id="aus-sync-status" style="font-size:11px;color:var(--fg2)">Conectando…</span>
       </div>
@@ -4316,28 +4323,49 @@ _loadAusCfg();
       const cls=_STATUS_CLS[st]||'gy';
       const dias=(a.inicio&&a.inicio!=='—'&&a.fim&&a.fim!=='—')?diffDays(a.inicio,a.fim):'?';
       const motivo=(a.motivo||'—').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const safeId=(a.id||'').replace(/'/g,"\\'");
+      const btns=st==='pendente'
+        ?`<div style="display:flex;gap:4px"><button class="aus-btn-ok" onclick="ausUpdateStatus('${safeId}','aprovado')" title="Aprovar">✓</button><button class="aus-btn-no" onclick="ausUpdateStatus('${safeId}','reprovado')" title="Reprovar">✗</button></div>`
+        :`<span style="font-size:11px;color:var(--fg2)">—</span>`;
       return `<tr><td><div class="en">${(a.nome||'—').replace(/</g,'&lt;')}</div><div class="ea">${(a.dept||'—').replace(/</g,'&lt;')}</div></td>`+
         `<td><span class="aus-badge ${tipoClass(a.tipo)}">${a.tipo||'—'}</span></td>`+
         `<td>${fmtDate(a.inicio)}</td>`+
         `<td>${fmtDate(a.fim)}</td>`+
         `<td class="num">${dias}</td>`+
         `<td><span class="badge ${cls}">${_STATUS_LABEL[st]||st}</span></td>`+
-        `<td style="font-size:11px;color:var(--fg2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${motivo}</td></tr>`;
+        `<td style="font-size:11px;color:var(--fg2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${motivo}</td>`+
+        `<td>${btns}</td></tr>`;
     }).join('');
     el.innerHTML=`<div class="tw"><table class="aus-tbl"><thead><tr>`+
       `<th>Colaborador</th><th>Tipo</th><th>Início</th><th>Fim</th>`+
-      `<th class="num">Dias</th><th>Status</th><th>Motivo</th>`+
+      `<th class="num">Dias</th><th>Status</th><th>Motivo</th><th>Ações</th>`+
       `</tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
   window.filterAusencias=function(){
     const st=document.getElementById('aus-filter-status')?.value||'';
     const tp=document.getElementById('aus-filter-tipo')?.value||'';
+    const dp=document.getElementById('aus-filter-dept')?.value||'';
+    // populate dept filter dynamically
+    const deptSel=document.getElementById('aus-filter-dept');
+    if(deptSel){
+      const cur=deptSel.value;
+      const depts=[...new Set(_allAbs.map(a=>a.dept||'').filter(d=>d&&d!=='—'))].sort();
+      deptSel.innerHTML='<option value="">Todas as áreas</option>'+depts.map(d=>`<option value="${d}"${d===cur?' selected':''}>${d}</option>`).join('');
+    }
     let f=_allAbs;
     if(st) f=f.filter(a=>a.status===st);
     if(tp) f=f.filter(a=>(a.tipo||'').toLowerCase()===(tp||'').toLowerCase());
+    if(dp) f=f.filter(a=>(a.dept||'').toLowerCase()===(dp||'').toLowerCase());
     renderAusCards(f);
     renderAusTable(f);
+  };
+
+  window.ausUpdateStatus=function(id,status){
+    try{
+      var db=firebase.firestore();
+      db.collection('ausencias').doc(id).update({status:status});
+    }catch(e){console.error('ausUpdateStatus:',e);}
   };
 
   window.initAusencias=function(){
