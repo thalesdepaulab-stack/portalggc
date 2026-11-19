@@ -540,6 +540,11 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;col
 /* toast notification */
 .portal-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:#1e293b;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 .portal-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.btn-abs-approve,.btn-abs-reject{padding:4px 10px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600;margin-top:6px;margin-right:4px;transition:background .15s}
+.btn-abs-approve{background:#d1fae5;color:#065f46}.btn-abs-approve:hover{background:#a7f3d0}
+.btn-abs-reject{background:#fee2e2;color:#991b1b}.btn-abs-reject:hover{background:#fecaca}
+.abs-admin-actions{margin-top:6px}
+.abs-attach-link{font-size:11px;color:var(--accent);text-decoration:none;display:inline-block;margin-top:3px}
 
 </style>
 
@@ -768,6 +773,9 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;col
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
 const TODAY = new Date();
 const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -1189,10 +1197,11 @@ let absDocsCache = [];
 
 async function initDb(){
   try{
-    DB = await claude.use("db");
-    const user = await claude.use("user");
-    if(user) isAdmin = user.isOwner() || user.canEdit();
-  } catch(e){ DB=null; }
+    const FIREBASE_CONFIG={apiKey:"AIzaSyDgEivknO4yo9NTPQ0dP5WAX7t2J2V02J4",authDomain:"portal-ggc.firebaseapp.com",projectId:"portal-ggc",storageBucket:"portal-ggc.firebasestorage.app",messagingSenderId:"1096946131047",appId:"1:1096946131047:web:e652de469160835f9274c2"};
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    DB = firebase.firestore();
+    isAdmin = true;
+  } catch(e){ DB=null; console.error('Firebase init:',e); }
 }
 
 function renderAbsences(){
@@ -1437,6 +1446,8 @@ function renderAbsItem(a){
   const datesStr=a.startDate===a.endDate?fmtD(sd):`${fmtD(sd)} → ${fmtD(ed)}`;
   const statusMap={pendente:'Pendente',aprovado:'Aprovado',reprovado:'Reprovado'};
   const adminRow = isAdmin ? `<div class="abs-admin-name">${a.employeeName} · ${a.dept}</div>` : '';
+  const attachLink = a.attachmentUrl ? `<a class="abs-attach-link" href="${a.attachmentUrl}" target="_blank">📎 Ver anexo</a>` : '';
+  const adminActions = isAdmin && a.status==='pendente' ? `<div class="abs-admin-actions"><button class="btn-abs-approve" onclick="approveAbsence('${a.id}','aprovado')">✓ Aprovar</button><button class="btn-abs-reject" onclick="approveAbsence('${a.id}','reprovado')">✗ Reprovar</button></div>` : '';
   return `<div class="abs-item">
     <div class="abs-icon" style="background:${t.bg}">${t.icon}</div>
     <div class="abs-info">
@@ -1444,12 +1455,21 @@ function renderAbsItem(a){
       <div class="abs-type">${t.label}</div>
       <div class="abs-dates">${datesStr}</div>
       ${a.reason?`<div class="abs-reason">${a.reason}</div>`:''}
+      ${attachLink}
+      ${adminActions}
     </div>
     <div class="abs-meta">
       <div class="abs-days">${days} dia${days>1?'s':''}</div>
       <span class="status-badge status-${a.status}">${statusMap[a.status]||a.status}</span>
     </div>
   </div>`;
+}
+
+async function approveAbsence(id, status){
+  if(!DB) return;
+  try{
+    await DB.collection('ausencias').doc(id).update({status, reviewedAt:new Date().toISOString()});
+  } catch(e){ alert('Erro ao atualizar. Tente novamente.'); }
 }
 
 // ── ORGANIZATION ──────────────────────────────────────────────────────────
