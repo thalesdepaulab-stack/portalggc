@@ -680,6 +680,9 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;col
 
     <!-- Tab: Ausências -->
     <div class="tab-panel" id="tab-ausencias" hidden>
+      <div id="abs-admin-bar" style="display:none;padding:12px 0 4px;text-align:right">
+        <button onclick="clearAllAbsences()" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px">🗑 Limpar todas as ausências</button>
+      </div>
       <div id="abs-content"></div>
     </div>
 
@@ -1205,6 +1208,8 @@ async function initDb(){
 
 function renderAbsences(){
   const c=document.getElementById('abs-content');
+  const bar=document.getElementById('abs-admin-bar');
+  if(bar) bar.style.display=isAdmin?'block':'none';
   if(!ME){ c.innerHTML=`<div class="abs-no-db" style="padding:30px 20px"><div style="font-size:32px;margin-bottom:8px">👤</div><div>Selecione seu perfil para registrar ausências.</div></div>`; return; }
   renderAbsenceForm();
   if(DB!==null) loadAbsenceList();
@@ -1469,6 +1474,17 @@ async function approveAbsence(id, status){
   try{
     await DB.collection('ausencias').doc(id).update({status, reviewedAt:new Date().toISOString()});
   } catch(e){ alert('Erro ao atualizar. Tente novamente.'); }
+}
+
+async function clearAllAbsences(){
+  if(!DB||!isAdmin) return;
+  if(!confirm('Tem certeza? Isso vai apagar TODAS as solicitações de ausência permanentemente.')) return;
+  try{
+    const snap=await DB.collection('ausencias').get();
+    const batch=DB.batch();
+    snap.docs.forEach(d=>batch.delete(d.ref));
+    await batch.commit();
+  } catch(e){ alert('Erro ao limpar. Tente novamente.'); }
 }
 
 // ── ORGANIZATION ──────────────────────────────────────────────────────────
