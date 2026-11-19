@@ -547,24 +547,6 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;col
 .abs-admin-actions{margin-top:6px}
 
 /* ── Analytics de ausências ── */
-.abs-an-wrap{padding:14px 16px 8px;border-bottom:2px solid var(--border)}
-.abs-an-title{font-size:12px;font-weight:700;color:var(--fg2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
-.abs-an-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-@media(max-width:600px){.abs-an-cards{grid-template-columns:repeat(2,1fr)}}
-.abs-an-card{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:11px 10px;text-align:center}
-.abs-an-val{font-size:20px;font-weight:700;color:var(--fg)}
-.abs-an-lbl{font-size:11px;color:var(--fg2);margin-top:2px}
-.abs-an-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.abs-an-filters select{padding:5px 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--fg);font-family:inherit;font-size:12px;cursor:pointer}
-.abs-an-tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px}
-.abs-an-tbl{width:100%;border-collapse:collapse;font-size:12px}
-.abs-an-tbl th{text-align:left;padding:7px 10px;font-weight:600;color:var(--fg2);background:var(--surface2);border-bottom:1px solid var(--border)}
-.abs-an-tbl td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--fg)}
-.abs-an-tbl tr:last-child td{border-bottom:none}
-.abs-an-st{display:inline-block;padding:2px 7px;border-radius:12px;font-size:11px;font-weight:600}
-.abs-an-st.pend{background:var(--o-bg);color:var(--o-fg)}
-.abs-an-st.aprov{background:var(--g-bg);color:var(--g-fg)}
-.abs-an-st.repr{background:var(--r-bg);color:var(--r-fg)}
 
 </style>
 
@@ -700,33 +682,6 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;col
 
     <!-- Tab: Ausências -->
     <div class="tab-panel" id="tab-ausencias" hidden>
-      <div id="abs-admin-bar" style="display:none;padding:12px 16px 4px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <div style="font-size:13px;font-weight:600;color:var(--fg)">Gestão de Ausências</div>
-      </div>
-      <!-- Analytics summary (admin only) -->
-      <div id="abs-analytics-wrap" style="display:none">
-        <div class="abs-an-wrap">
-          <div class="abs-an-title">Resumo</div>
-          <div class="abs-an-cards" id="abs-an-cards"></div>
-          <div class="abs-an-filters">
-            <select id="abs-an-status" onchange="renderAbsAnalyticsTable()">
-              <option value="">Todos os status</option>
-              <option value="pendente">Pendente</option>
-              <option value="aprovado">Aprovado</option>
-              <option value="reprovado">Reprovado</option>
-            </select>
-            <select id="abs-an-tipo" onchange="renderAbsAnalyticsTable()">
-              <option value="">Todos os tipos</option>
-              <option value="descanso">Descanso</option>
-              <option value="ferias">Férias</option>
-              <option value="folga">Folga</option>
-              <option value="homeoffice">Home office</option>
-              <option value="licenca">Licença médica</option>
-            </select>
-          </div>
-          <div class="abs-an-tbl-wrap" id="abs-an-tbl-wrap"></div>
-        </div>
-      </div>
       <div id="abs-content"></div>
     </div>
 
@@ -1252,8 +1207,6 @@ async function initDb(){
 
 function renderAbsences(){
   const c=document.getElementById('abs-content');
-  const bar=document.getElementById('abs-admin-bar');
-  if(bar) bar.style.display=isAdmin?'block':'none';
   if(!ME){ c.innerHTML=`<div class="abs-no-db" style="padding:30px 20px"><div style="font-size:32px;margin-bottom:8px">👤</div><div>Selecione seu perfil para registrar ausências.</div></div>`; return; }
   renderAbsenceForm();
   if(DB!==null) loadAbsenceList();
@@ -1479,7 +1432,6 @@ function loadAbsenceList(){
       wrap.innerHTML=`<div class="sec-label">${title}</div><div class="abs-list">${docs.map(renderAbsItem).join('')}</div>`;
     }
     renderAbsCalendar();
-    renderAbsAnalytics(docs);
     // update sidebar badge
     const pendingCount=docs.filter(d=>d.status==='pendente').length;
     const sbBadge=document.getElementById('sb-abs-badge');
@@ -1532,46 +1484,6 @@ async function clearAllAbsences(){
   } catch(e){ alert('Erro ao limpar. Tente novamente.'); }
 }
 
-function renderAbsAnalytics(docs){
-  const wrap=document.getElementById('abs-analytics-wrap');
-  if(!wrap||!isAdmin){return;}
-  wrap.style.display='block';
-  const pend=docs.filter(d=>d.status==='pendente').length;
-  const aprov=docs.filter(d=>d.status==='aprovado').length;
-  const repr=docs.filter(d=>d.status==='reprovado').length;
-  const cards=document.getElementById('abs-an-cards');
-  if(cards) cards.innerHTML=[
-    {lbl:'Total',val:docs.length,cls:''},
-    {lbl:'Pendentes',val:pend,cls:'co'},
-    {lbl:'Aprovados',val:aprov,cls:'cg'},
-    {lbl:'Reprovados',val:repr,cls:'cr'},
-  ].map(c=>`<div class="abs-an-card"><div class="abs-an-val">${c.val}</div><div class="abs-an-lbl">${c.lbl}</div></div>`).join('');
-  renderAbsAnalyticsTable();
-}
-
-function renderAbsAnalyticsTable(){
-  const docs=absDocsCache;
-  const st=document.getElementById('abs-an-status')?.value||'';
-  const tp=document.getElementById('abs-an-tipo')?.value||'';
-  let f=docs;
-  if(st) f=f.filter(d=>d.status===st);
-  if(tp) f=f.filter(d=>(d.type||'')===tp);
-  const wrap=document.getElementById('abs-an-tbl-wrap');
-  if(!wrap) return;
-  if(!f.length){wrap.innerHTML='<div style="padding:12px 10px;text-align:center;color:var(--fg2);font-size:12px">Nenhuma ausência encontrada</div>';return;}
-  const fmtD=s=>{if(!s) return '—';const p=s.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s;};
-  const stMap={pendente:'Pendente',aprovado:'Aprovado',reprovado:'Reprovado'};
-  const stCls={pendente:'pend',aprovado:'aprov',reprovado:'repr'};
-  const rows=f.map(d=>`<tr>
-    <td>${(d.employeeName||'—').replace(/</g,'&lt;')}</td>
-    <td>${(d.dept||'—').replace(/</g,'&lt;')}</td>
-    <td>${(d.type||'—').replace(/</g,'&lt;')}</td>
-    <td>${fmtD(d.startDate)}</td>
-    <td>${fmtD(d.endDate)}</td>
-    <td><span class="abs-an-st ${stCls[d.status]||''}">${stMap[d.status]||d.status||'—'}</span></td>
-  </tr>`).join('');
-  wrap.innerHTML=`<table class="abs-an-tbl"><thead><tr><th>Colaborador</th><th>Área</th><th>Tipo</th><th>Início</th><th>Fim</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
-}
 
 // ── ORGANIZATION ──────────────────────────────────────────────────────────
 function portalOrgZoom(v){
