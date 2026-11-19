@@ -544,7 +544,6 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;col
 .btn-abs-approve{background:#d1fae5;color:#065f46}.btn-abs-approve:hover{background:#a7f3d0}
 .btn-abs-reject{background:#fee2e2;color:#991b1b}.btn-abs-reject:hover{background:#fecaca}
 .abs-admin-actions{margin-top:6px}
-.abs-attach-link{font-size:11px;color:var(--accent);text-decoration:none;display:inline-block;margin-top:3px}
 
 </style>
 
@@ -775,7 +774,6 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;col
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
 const TODAY = new Date();
 const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -1446,7 +1444,6 @@ function renderAbsItem(a){
   const datesStr=a.startDate===a.endDate?fmtD(sd):`${fmtD(sd)} → ${fmtD(ed)}`;
   const statusMap={pendente:'Pendente',aprovado:'Aprovado',reprovado:'Reprovado'};
   const adminRow = isAdmin ? `<div class="abs-admin-name">${a.employeeName} · ${a.dept}</div>` : '';
-  const attachLink = a.attachmentUrl ? `<a class="abs-attach-link" href="${a.attachmentUrl}" target="_blank">📎 Ver anexo</a>` : '';
   const adminActions = isAdmin && a.status==='pendente' ? `<div class="abs-admin-actions"><button class="btn-abs-approve" onclick="approveAbsence('${a.id}','aprovado')">✓ Aprovar</button><button class="btn-abs-reject" onclick="approveAbsence('${a.id}','reprovado')">✗ Reprovar</button></div>` : '';
   return `<div class="abs-item">
     <div class="abs-icon" style="background:${t.bg}">${t.icon}</div>
@@ -1455,7 +1452,6 @@ function renderAbsItem(a){
       <div class="abs-type">${t.label}</div>
       <div class="abs-dates">${datesStr}</div>
       ${a.reason?`<div class="abs-reason">${a.reason}</div>`:''}
-      ${attachLink}
       ${adminActions}
     </div>
     <div class="abs-meta">
