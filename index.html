@@ -41,6 +41,7 @@
 }
 *,*::before,*::after{box-sizing:border-box}
 body{font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;color:var(--fg);background:var(--bg);margin:0}
+[hidden]{display:none!important}
 
 /* modal */
 .modal-ov{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.55);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-left,0px))}
@@ -1444,7 +1445,9 @@ function renderAbsItem(a){
   const datesStr=a.startDate===a.endDate?fmtD(sd):`${fmtD(sd)} → ${fmtD(ed)}`;
   const statusMap={pendente:'Pendente',aprovado:'Aprovado',reprovado:'Reprovado'};
   const adminRow = isAdmin ? `<div class="abs-admin-name">${a.employeeName} · ${a.dept}</div>` : '';
-  const adminActions = isAdmin && a.status==='pendente' ? `<div class="abs-admin-actions"><button class="btn-abs-approve" onclick="approveAbsence('${a.id}','aprovado')">✓ Aprovar</button><button class="btn-abs-reject" onclick="approveAbsence('${a.id}','reprovado')">✗ Reprovar</button></div>` : '';
+  const managerOfReq = isAdmin ? findManager(a.employeeName) : null;
+  const canApprove = isAdmin && ME && (ME.name === managerOfReq || !managerOfReq);
+  const adminActions = canApprove && a.status==='pendente' ? `<div class="abs-admin-actions"><button class="btn-abs-approve" onclick="approveAbsence('${a.id}','aprovado')">✓ Aprovar</button><button class="btn-abs-reject" onclick="approveAbsence('${a.id}','reprovado')">✗ Reprovar</button></div>` : '';
   return `<div class="abs-item">
     <div class="abs-icon" style="background:${t.bg}">${t.icon}</div>
     <div class="abs-info">
