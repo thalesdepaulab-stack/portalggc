@@ -194,8 +194,11 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;col
 .btn-submit:disabled{opacity:.45;cursor:default}
 
 .abs-list{padding:0}
-.abs-item{display:flex;align-items:flex-start;gap:12px;padding:12px 20px;border-top:1px solid var(--border);transition:background .12s}
+.abs-item{display:flex;align-items:flex-start;gap:12px;padding:12px 20px;border-top:1px solid var(--border);transition:background .12s;border-left:3px solid transparent}
 .abs-item:hover{background:var(--surface-hover)}
+.abs-item.si-pendente{border-left-color:#ebb431}
+.abs-item.si-aprovado{border-left-color:#22c55e}
+.abs-item.si-reprovado{border-left-color:#ef4444}
 .abs-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
 .abs-info{flex:1;min-width:0}
 .abs-type{font-weight:600;font-size:13px;color:var(--fg)}
@@ -203,7 +206,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;col
 .abs-reason{font-size:12px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .abs-meta{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 .abs-days{font-size:12px;font-weight:600;color:var(--fg);font-variant-numeric:tabular-nums}
-.status-badge{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:5px}
+.status-badge{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:6px}
 .status-pendente{background:#fef3c7;color:#92400e}
 .status-aprovado{background:#d1fae5;color:#065f46}
 .status-reprovado{background:#fee2e2;color:#991b1b}
@@ -1446,11 +1449,13 @@ function renderAbsItem(a){
   const fmtD=d=>`${p2(d.getDate())}/${p2(d.getMonth()+1)}`;
   const datesStr=a.startDate===a.endDate?fmtD(sd):`${fmtD(sd)} → ${fmtD(ed)}`;
   const statusMap={pendente:'Pendente',aprovado:'Aprovado',reprovado:'Reprovado'};
+  const statusIcon={pendente:'⏳',aprovado:'✅',reprovado:'❌'};
+  const st=a.status||'pendente';
   const adminRow = isAdmin ? `<div class="abs-admin-name">${a.employeeName} · ${a.dept}</div>` : '';
   const managerOfReq = isAdmin ? findManager(a.employeeName) : null;
   const canApprove = isAdmin && ME && (ME.name === managerOfReq || !managerOfReq);
-  const adminActions = canApprove && a.status==='pendente' ? `<div class="abs-admin-actions"><button class="btn-abs-approve" onclick="approveAbsence('${a.id}','aprovado')">✓ Aprovar</button><button class="btn-abs-reject" onclick="approveAbsence('${a.id}','reprovado')">✗ Reprovar</button></div>` : '';
-  return `<div class="abs-item">
+  const adminActions = canApprove && st==='pendente' ? `<div class="abs-admin-actions"><button class="btn-abs-approve" onclick="approveAbsence('${a.id}','aprovado')">✓ Aprovar</button><button class="btn-abs-reject" onclick="approveAbsence('${a.id}','reprovado')">✗ Reprovar</button></div>` : '';
+  return `<div class="abs-item si-${st}">
     <div class="abs-icon" style="background:${t.bg}">${t.icon}</div>
     <div class="abs-info">
       ${adminRow}
@@ -1461,7 +1466,7 @@ function renderAbsItem(a){
     </div>
     <div class="abs-meta">
       <div class="abs-days">${days} dia${days>1?'s':''}</div>
-      <span class="status-badge status-${a.status}">${statusMap[a.status]||a.status}</span>
+      <span class="status-badge status-${st}">${statusIcon[st]||''} ${statusMap[st]||st}</span>
     </div>
   </div>`;
 }
