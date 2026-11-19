@@ -1417,11 +1417,11 @@ function loadAbsenceList(){
   if(!wrap) return;
 
   const query = isAdmin
-    ? DB.collection('ausencias').orderBy('submittedAt','desc')
-    : DB.collection('ausencias').where('employeeName','==',ME.name).orderBy('submittedAt','desc');
+    ? DB.collection('ausencias')
+    : DB.collection('ausencias').where('employeeName','==',ME.name);
 
   query.onSnapshot(snap=>{
-    absDocsCache=snap.docs.map(d=>d.data());
+    absDocsCache=snap.docs.map(d=>d.data()).sort((a,b)=>(b.submittedAt||'').localeCompare(a.submittedAt||''));
     const docs=absDocsCache;
     if(!docs.length){ wrap.innerHTML=`<div class="empty">Nenhuma solicitação registrada</div>`; }
     else {
