@@ -1093,6 +1093,14 @@ const AREA_DEPT = {exec:"Executiva",ops:"Operações",mkt:"Marketing",com:"Comer
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
 function p2(n){ return String(n).padStart(2,'0'); }
+function calcHours(startTime, endTime){
+  const [sh,sm]=(startTime||'00:00').split(':').map(Number);
+  const [eh,em]=(endTime||'00:00').split(':').map(Number);
+  const mins=(eh*60+em)-(sh*60+sm);
+  if(mins<=0)return'0';
+  const h=Math.floor(mins/60), m=mins%60;
+  return m?`${h}h${p2(m)}`:String(h)+'h';
+}
 function avatarColor(name){
   const C=['#e8197d','#8b5cf6','#2563eb','#059669','#d97706','#ec4899','#0891b2','#6366f1','#dc2626','#65a30d'];
   let h=0; for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))&0xffff; return C[h%C.length];
@@ -1248,6 +1256,22 @@ function renderAbsenceForm(){
             <input class="form-input" id="abs-reason" placeholder="Ex: consulta médica...">
           </div>
         </div>
+        <div class="form-row" style="align-items:center;gap:12px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:13px;color:var(--fg2);white-space:nowrap">
+            <input type="checkbox" id="abs-partial-check" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)">
+            Ausência parcial (horas)
+          </label>
+        </div>
+        <div id="abs-time-row" class="form-row" hidden>
+          <div class="form-group">
+            <label class="form-label">Das</label>
+            <input type="time" class="form-input" id="abs-time-start" value="08:00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Até</label>
+            <input type="time" class="form-input" id="abs-time-end" value="12:00">
+          </div>
+        </div>
         <div class="form-footer">
           <span id="abs-info" class="form-info"></span>
           <button class="btn-submit" id="abs-submit">Enviar solicitação</button>
@@ -1271,6 +1295,12 @@ function renderAbsenceForm(){
     renderAbsCalendar();
   });
   document.getElementById('abs-submit').addEventListener('click', submitAbsence);
+  document.getElementById('abs-partial-check').addEventListener('change', e=>{
+    document.getElementById('abs-time-row').hidden=!e.target.checked;
+    updateAbsSelPanel();
+  });
+  document.getElementById('abs-time-start').addEventListener('change', updateAbsSelPanel);
+  document.getElementById('abs-time-end').addEventListener('change', updateAbsSelPanel);
 
   renderAbsCalendar();
   loadAbsenceList();
@@ -1377,7 +1407,18 @@ function updateAbsSelPanel(){
   const days=daysBetween(s,e);
   const fmt=v=>{const d=new Date(v+' 00:00');return`${p2(d.getDate())}/${p2(d.getMonth()+1)}`;};
   const lbl=document.getElementById('abs-sel-label');
-  if(lbl) lbl.textContent=s===e?fmt(s):`${fmt(s)} → ${fmt(e)}  ·  ${days} dia${days>1?'s':''}`;
+  const partialChk=document.getElementById('abs-partial-check');
+  const isPartial=partialChk&&partialChk.checked;
+  if(isPartial){
+    const ts=document.getElementById('abs-time-start');
+    const te=document.getElementById('abs-time-end');
+    const st=ts?ts.value:'08:00', et=te?te.value:'12:00';
+    const hrs=calcHours(st,et);
+    const dateStr=s===e?fmt(s):`${fmt(s)} → ${fmt(e)}`;
+    if(lbl) lbl.textContent=`${dateStr}  ·  ${st} → ${et}  ·  ${hrs} de ausência`;
+  } else {
+    if(lbl) lbl.textContent=s===e?fmt(s):`${fmt(s)} → ${fmt(e)}  ·  ${days} dia${days>1?'s':''}`;
+  }
   const info=document.getElementById('abs-info');
   if(info) info.textContent='';
 }
@@ -1396,14 +1437,20 @@ async function submitAbsence(){
   if(s>e)[s,e]=[e,s];
   try{
     const id=crypto.randomUUID();
-    await DB.collection('ausencias').doc(id).set({
+    const isPartial=(document.getElementById('abs-partial-check')||{checked:false}).checked;
+    const startTime=isPartial?(document.getElementById('abs-time-start')||{value:'08:00'}).value:null;
+    const endTime=isPartial?(document.getElementById('abs-time-end')||{value:'12:00'}).value:null;
+    const totalHours=isPartial&&startTime&&endTime?calcHours(startTime,endTime):null;
+    const rec={
       id,employeeName:ME.name,dept:ME.dept,
       type:document.getElementById('abs-type').value,
       startDate:s,endDate:e,
       reason:(document.getElementById('abs-reason')||{value:''}).value.trim(),
       status:'pendente',
       submittedAt:new Date().toISOString()
-    });
+    };
+    if(isPartial&&startTime&&endTime){rec.startTime=startTime;rec.endTime=endTime;rec.totalHours=totalHours;}
+    await DB.collection('ausencias').doc(id).set(rec);
     absSel1=null; absSel2=null;
     const panel=document.getElementById('abs-sel-panel');if(panel)panel.hidden=true;
     const ri=document.getElementById('abs-reason');if(ri)ri.value='';
@@ -1465,7 +1512,9 @@ function renderAbsItem(a){
       ${adminActions}
     </div>
     <div class="abs-meta">
-      <div class="abs-days">${days} dia${days>1?'s':''}</div>
+      ${a.totalHours
+        ?`<div class="abs-days" style="font-size:12px;line-height:1.4">${a.startTime} → ${a.endTime}<br><span style="font-weight:700;color:var(--accent)">${a.totalHours}</span></div>`
+        :`<div class="abs-days">${days} dia${days>1?'s':''}</div>`}
       <span class="status-badge status-${st}">${statusIcon[st]||''} ${statusMap[st]||st}</span>
     </div>
   </div>`;
